@@ -356,7 +356,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 };
 
-// ---------- Sprites (your images, with vector fallbacks if they fail to load) ----------
+// ---------- Sprites (all drawn as SVG, so there are no external images and it looks the same everywhere) ----------
 function carSvg(body, dark, glass) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 150">
 <rect x="2" y="26" width="12" height="30" rx="4" fill="#111"/><rect x="66" y="26" width="12" height="30" rx="4" fill="#111"/>
@@ -389,17 +389,16 @@ function bikeSvg() {
 </svg>`;
 }
 const svgUri = s => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
-function loadSprite(url, fallbackSvg) {
+function makeSprite(svg) {
   const img = new Image();
-  img.onerror = () => { img.onerror = null; img.src = svgUri(fallbackSvg); };
-  img.src = url;
+  img.src = svgUri(svg);
   return img;
 }
 const spriteReady = img => img.complete && img.naturalWidth > 0;
 
-const playerImg = loadSprite("https://iili.io/fPIveyX.png", carSvg("#e63946", "#8d1a24", "#9ad1ff"));
-const enemyImg = loadSprite("https://iili.io/fPAwx71.png", carSvg("#2a6fdb", "#173f80", "#cfe8ff"));
-const bikeImg = loadSprite("https://iili.io/fP51511.png", bikeSvg());
+const playerImg = makeSprite(carSvg("#e63946", "#8d1a24", "#9ad1ff"));
+const enemyImg = makeSprite(carSvg("#2a6fdb", "#173f80", "#cfe8ff"));
+const bikeImg = makeSprite(bikeSvg());
 
 function copSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 150">
@@ -416,8 +415,7 @@ function copSvg() {
 <rect x="20" y="138" width="11" height="4" rx="2" fill="#ff3b3b"/><rect x="49" y="138" width="11" height="4" rx="2" fill="#ff3b3b"/>
 </svg>`;
 }
-const copImg = new Image();
-copImg.src = svgUri(copSvg());
+const copImg = makeSprite(copSvg());
 
 ui.logo.innerHTML = carSvg("#e63946", "#8d1a24", "#9ad1ff");
 
