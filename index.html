@@ -426,6 +426,10 @@ function drawSprite(img, cx, cy, w, h, rot) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rot);
+  ctx.shadowColor = "rgba(0,0,0,0.38)"; // soft shadow that follows the sprite's own outline
+  ctx.shadowBlur = 5;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 4;
   ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
@@ -1118,22 +1122,16 @@ function drawWorld() {
 function drawTraffic() {
   enemies.forEach(e => {
     const cx = laneX(e.lane, e.w) + e.w / 2, cy = e.y + e.h / 2;
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.beginPath(); ctx.ellipse(cx + 4, cy + 8, 36, 56, 0, 0, Math.PI * 2); ctx.fill();
     drawSprite(enemyImg, cx, cy, enemyImgSize.w, enemyImgSize.h, Math.PI);
   });
   bikes.forEach(b => {
     const cx = laneX(b.lane, b.w) + b.w / 2, cy = b.y + b.h / 2;
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.beginPath(); ctx.ellipse(cx + 3, cy + 6, 14, 34, 0, 0, Math.PI * 2); ctx.fill();
     drawSprite(bikeImg, cx, cy, bikeImgSize.w, bikeImgSize.h, Math.PI);
   });
 }
 
 function drawPlayer() {
   const cx = car.x + car.w / 2, cy = car.y + car.h / 2;
-  ctx.fillStyle = "rgba(0,0,0,0.26)";
-  ctx.beginPath(); ctx.ellipse(cx + 4, cy + 8, carImg.w / 2 - 6, carImg.h / 2 - 10, 0, 0, Math.PI * 2); ctx.fill();
   drawSprite(playerImg, cx, cy, carImg.w, carImg.h, 0);
 }
 
@@ -1185,8 +1183,6 @@ function drawCop() {
     ctx.fillStyle = `rgba(230,57,70,${a})`;
     ctx.fillRect(cop.x - 4, 0, cop.w + 8, cop.y);
   }
-  ctx.fillStyle = "rgba(0,0,0,0.26)";
-  ctx.beginPath(); ctx.ellipse(cx + 4, cy + 8, carImg.w / 2 - 6, carImg.h / 2 - 10, 0, 0, Math.PI * 2); ctx.fill();
   drawSprite(copImg, cx, cy, carImg.w, carImg.h, 0);
   const red = Math.floor(cop.flash / (cop.mode === "telegraph" ? 7 : 10)) % 2 === 0;
   const lx = cx + (red ? -10 : 10), ly = cy + 11.5, c = red ? "230,57,70" : "42,111,219";
