@@ -394,11 +394,34 @@ function makeSprite(svg) {
   img.src = svgUri(svg);
   return img;
 }
+function loadPixel(url) { // your original pixel-art images, kept underneath the drawn cars
+  const img = new Image();
+  img.onerror = () => {};
+  img.src = url;
+  return img;
+}
+
+// A car drawn to fit its hitbox: the body is exactly bw x bh, wheels poke out 6px on each side
+function fitCarSvg(bw, bh, body, dark, glass, cop) {
+  const P = 6, r = Math.min(bw * 0.38, bh * 0.2);
+  const x = v => (bw * v).toFixed(1), y = v => (bh * v).toFixed(1);
+  const wheel = (wx, wy) => `<rect x="${wx}" y="${y(wy)}" width="9" height="${y(0.2)}" rx="3.5" fill="#111"/>`;
+  const lights = (yy, h, col) => `<rect x="${x(0.14)}" y="${yy}" width="${x(0.22)}" height="${h}" rx="2.5" fill="${col}"/><rect x="${x(0.64)}" y="${yy}" width="${x(0.22)}" height="${h}" rx="2.5" fill="${col}"/>`;
+  const bar = cop
+    ? `<rect x="${x(0.16)}" y="${y(0.55)}" width="${x(0.31)}" height="7" rx="2" fill="#e63946"/><rect x="${x(0.53)}" y="${y(0.55)}" width="${x(0.31)}" height="7" rx="2" fill="#2a6fdb"/>`
+    : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-P} 0 ${bw + P * 2} ${bh}">
+${wheel(-5, 0.14)}${wheel(bw - 4, 0.14)}${wheel(-5, 0.66)}${wheel(bw - 4, 0.66)}
+<rect x="0" y="0" width="${bw}" height="${bh}" rx="${r}" fill="${body}"/>
+<rect x="1" y="1" width="${bw - 2}" height="${bh - 2}" rx="${r - 1}" fill="none" stroke="${dark}" stroke-width="2"/>
+<path d="M${x(0.2)} ${y(0.31)} Q${x(0.5)} ${y(0.23)} ${x(0.8)} ${y(0.31)} L${x(0.72)} ${y(0.46)} H${x(0.28)} Z" fill="${glass}"/>
+<rect x="${x(0.28)}" y="${y(0.5)}" width="${x(0.44)}" height="${y(0.16)}" rx="5" fill="${dark}"/>
+<path d="M${x(0.3)} ${y(0.71)} H${x(0.7)} L${x(0.76)} ${y(0.83)} Q${x(0.5)} ${y(0.89)} ${x(0.24)} ${y(0.83)} Z" fill="${glass}"/>
+${lights(y(0.04), 5, "#ffe97a")}${lights(bh - 9, 5, "#ff3b3b")}${bar}
+</svg>`;
+}
 const spriteReady = img => img.complete && img.naturalWidth > 0;
 
-const playerImg = makeSprite(carSvg("#e63946", "#8d1a24", "#9ad1ff"));
-const enemyImg = makeSprite(carSvg("#2a6fdb", "#173f80", "#cfe8ff"));
-const bikeImg = makeSprite(bikeSvg());
 
 function copSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 150">
@@ -415,21 +438,31 @@ function copSvg() {
 <rect x="20" y="138" width="11" height="4" rx="2" fill="#ff3b3b"/><rect x="49" y="138" width="11" height="4" rx="2" fill="#ff3b3b"/>
 </svg>`;
 }
-const copImg = makeSprite(copSvg());
+
 
 ui.logo.innerHTML = carSvg("#e63946", "#8d1a24", "#9ad1ff");
 
-function drawSprite(img, cx, cy, w, h, rot) {
+function drawSprite(img, cx, cy, w, h, rot, flat) {
   if (!spriteReady(img)) return;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rot);
-  ctx.shadowColor = "rgba(0,0,0,0.38)"; // soft shadow that follows the sprite's own outline
-  ctx.shadowBlur = 5;
-  ctx.shadowOffsetX = 3;
-  ctx.shadowOffsetY = 4;
+  if (!flat) {
+    ctx.shadowColor = "rgba(0,0,0,0.38)"; // soft shadow that follows the sprite's own outline
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 4;
+  }
   ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
+}
+
+// Draws one vehicle centred on its hitbox. The pixel art is shrunk to sit fully inside the drawn car, and it is
+// never drawn on its own (if the drawn car isn't ready yet, nothing is drawn).
+function drawVehicle(px, svg, cx, cy, ow, oh, uw, uh, rot) {
+  if (!spriteReady(svg)) return;
+  if (spriteReady(px)) drawSprite(px, cx, cy, uw, uh, rot, true);
+  drawSprite(svg, cx, cy, ow, oh, rot, false);
 }
 
 // ---------- Sound: everything is generated with Web Audio, no files needed ----------
@@ -660,6 +693,17 @@ const enemyBox = { w: 80, h: 120 };
 const enemyImgSize = { w: 100, h: 160 };
 const bikeBox = { w: 30, h: 60 };
 const bikeImgSize = { w: 50, h: 100 };
+
+// Vehicles: the drawn cars sit on top of your pixel-art images and match the hitboxes
+const pxPlayer = loadPixel("https://iili.io/fPIveyX.png");
+const pxEnemy = loadPixel("https://iili.io/fPAwx71.png");
+const pxBike = loadPixel("https://iili.io/fP51511.png");
+const SIDE = 6;         // wheels poke out this far on each side of a car's hitbox
+const BIKE_SCALE = 1.2; // the bike is drawn a touch larger than its (very narrow) hitbox so it stays visible
+const playerImg = makeSprite(fitCarSvg(car.w, car.h, "#e63946", "#8d1a24", "#9ad1ff"));
+const enemyImg = makeSprite(fitCarSvg(enemyBox.w, enemyBox.h, "#2a6fdb", "#173f80", "#cfe8ff"));
+const copImg = makeSprite(fitCarSvg(car.w, car.h, "#f4f4f6", "#1b1f2a", "#9ad1ff", true));
+const bikeImg = makeSprite(bikeSvg());
 
 function layout() {
   // keep the car at the same relative spot when the window is resized
@@ -1120,17 +1164,17 @@ function drawWorld() {
 function drawTraffic() {
   enemies.forEach(e => {
     const cx = laneX(e.lane, e.w) + e.w / 2, cy = e.y + e.h / 2;
-    drawSprite(enemyImg, cx, cy, enemyImgSize.w, enemyImgSize.h, Math.PI);
+    drawVehicle(pxEnemy, enemyImg, cx, cy, e.w + SIDE * 2, e.h, e.w - 16, e.h - 16, Math.PI);
   });
   bikes.forEach(b => {
     const cx = laneX(b.lane, b.w) + b.w / 2, cy = b.y + b.h / 2;
-    drawSprite(bikeImg, cx, cy, bikeImgSize.w, bikeImgSize.h, Math.PI);
+    drawVehicle(pxBike, bikeImg, cx, cy, b.w * BIKE_SCALE, b.h * BIKE_SCALE, b.w * 0.2, b.h * 0.5, Math.PI); // hidden art is kept inside the bike's narrow body
   });
 }
 
 function drawPlayer() {
   const cx = car.x + car.w / 2, cy = car.y + car.h / 2;
-  drawSprite(playerImg, cx, cy, carImg.w, carImg.h, 0);
+  drawVehicle(pxPlayer, playerImg, cx, cy, car.w + SIDE * 2, car.h, car.w - 16, car.h - 16, 0);
 }
 
 function drawExplosion() {
@@ -1181,9 +1225,9 @@ function drawCop() {
     ctx.fillStyle = `rgba(230,57,70,${a})`;
     ctx.fillRect(cop.x - 4, 0, cop.w + 8, cop.y);
   }
-  drawSprite(copImg, cx, cy, carImg.w, carImg.h, 0);
+  drawSprite(copImg, cx, cy, cop.w + SIDE * 2, cop.h, 0, false);
   const red = Math.floor(cop.flash / (cop.mode === "telegraph" ? 7 : 10)) % 2 === 0;
-  const lx = cx + (red ? -10 : 10), ly = cy + 11.5, c = red ? "230,57,70" : "42,111,219";
+  const lx = cx + (red ? -12 : 12), ly = cy + 9.5, c = red ? "230,57,70" : "42,111,219";
   const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 42);
   g.addColorStop(0, `rgba(${c},0.85)`); g.addColorStop(1, `rgba(${c},0)`);
   ctx.fillStyle = g;
